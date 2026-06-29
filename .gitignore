@@ -1,0 +1,17 @@
+ # Python Cache
+__pycache__/
+*.pyc
+
+# Log Files
+*.log
+
+# Video Recordings
+recordings/
+*.mp4
+*.avi
+
+# SQLite Database
+*.db
+
+# Temporary Files
+*.tmp

@@ -1,0 +1,1 @@
+print("Mini-KGYS-Baslatildi")

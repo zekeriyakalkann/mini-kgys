@@ -4,6 +4,7 @@ def show_menu():
     print("====================")
     print("1 - Kamera Listesi")
     print("2 - Sistem Bilgisi")
+    print("3 - Kamera Durum Kontrolu")
     print("0 - Çıkış")
 
     choice = input("\nSeçiminiz: ")

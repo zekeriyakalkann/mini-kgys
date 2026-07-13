@@ -1,3 +1,4 @@
+from database import create_database
 from monitoring import check_cameras
 from logger import info
 from menu import show_menu
@@ -5,6 +6,8 @@ from camera import list_cameras, get_camera_count
 
 
 def main():
+    
+    create_database()
 
     while True:
 

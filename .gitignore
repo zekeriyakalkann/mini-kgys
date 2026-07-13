@@ -15,3 +15,6 @@ recordings/
 
 # Temporary Files
 *.tmp
+
+#Virtual Environment
+ven/

@@ -1,39 +1,59 @@
 import subprocess
 
+from datetime import datetime
+
 from database import get_all_cameras, update_camera_status
 from logger import info, warning
 
 
 def check_cameras():
 
-    print("\nMonitoring basladi")
+    online_count = 0
+    offline_count = 0
+
+    print("\n========== Monitoring Basladi ==========\n")
 
     cameras = get_all_cameras()
 
     for camera in cameras:
 
-        print(f"Kontrol ediliyor: {camera['name']}")
+        old_status = camera["status"]
+
+        print(f"Kontrol Ediliyor : {camera['name']} ({camera['ip']})")
 
         result = subprocess.run(
-            ["ping", "-c", "1", camera["ip"]],
+            ["ping", "-c", "1", "-W", "1", camera["ip"]],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
 
         if result.returncode == 0:
 
-            update_camera_status(camera["id"], "ONLINE")
-
-            info(f"{camera['name']} ONLINE")
-
-            print(f"DEBUG: {camera['name']} -> ONLINE")
+            new_status = "ONLINE"
+            online_count += 1
 
         else:
 
-            update_camera_status(camera["id"], "OFFLINE")
+            new_status = "OFFLINE"
+            offline_count += 1
 
-            warning(f"{camera['name']} OFFLINE")
+        if old_status != new_status:
 
-            print(f"DEBUG: {camera['name']} -> OFFLINE")
+            update_camera_status(camera["id"], new_status)
 
-    print("\nMonitoring bitti")
+            if new_status == "ONLINE":
+
+                info(f"{camera['name']} ONLINE")
+
+            else:
+
+                warning(f"{camera['name']} OFFLINE")
+
+        print(f"Durum : {new_status}\n")
+
+    print("========== Monitoring Ozeti ==========")
+    print(f"Kontrol Zamani : {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}")
+    print(f"Toplam Kamera  : {len(cameras)}")
+    print(f"Online         : {online_count}")
+    print(f"Offline        : {offline_count}")
+    print("======================================")

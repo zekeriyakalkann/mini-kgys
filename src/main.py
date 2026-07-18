@@ -2,7 +2,13 @@ from database import create_database
 from monitoring import check_cameras
 from logger import info
 from menu import show_menu
-from camera import list_cameras, get_camera_count
+from camera import (
+    list_cameras,
+    get_camera_count,
+    create_camera,
+    delete_camera_menu,
+    update_camera_menu
+)
 
 
 def main():
@@ -27,6 +33,18 @@ def main():
             check_cameras()
             print("\nKamera durumlari guncellendi.")
 
+        elif choice == "4":
+            
+            create_camera()
+
+        elif choice == "5":
+
+            delete_camera_menu()
+
+        elif choice == "6":
+
+            update_camera_menu()
+            
         elif choice == "0":
             print("\nMini KGYS kapatiliyor...")
             break

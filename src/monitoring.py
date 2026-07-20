@@ -1,59 +1,117 @@
 import subprocess
+import requests
+import time
 
 from datetime import datetime
 
 from database import get_all_cameras, update_camera_status
 from logger import info, warning
 
+def ping_camera(ip):
+
+    start = time.perf_counter()
+
+    result = subprocess.run(
+        ["ping", "-c", "1", ip],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+
+    end = time.perf_counter()
+
+    response_time = round((end - start) * 1000, 2)
+
+    if result.returncode == 0:
+        return True, response_time
+
+    return False, None
+
+def http_check(ip):
+
+    try:
+
+        start = time.perf_counter()
+
+        response = requests.get(
+            f"http://{ip}",
+            timeout=2
+        )
+
+        end = time.perf_counter()
+
+        response_time = round((end - start) * 1000, 2)
+
+        if response.status_code == 200:
+            return True, response_time
+
+        return False, None
+
+    except:
+
+        return False, None
 
 def check_cameras():
+
+    print("\n========================================")
+    print("         MONITORING BASLADI")
+    print("========================================")
+
+    cameras = get_all_cameras()
 
     online_count = 0
     offline_count = 0
 
-    print("\n========== Monitoring Basladi ==========\n")
-
-    cameras = get_all_cameras()
-
     for camera in cameras:
 
-        old_status = camera["status"]
+        print(f"\nKamera : {camera['name']}")
+        print(f"IP     : {camera['ip']}")
 
-        print(f"Kontrol Ediliyor : {camera['name']} ({camera['ip']})")
+        ping_ok, ping_time = ping_camera(camera["ip"])
+        http_ok, http_time = http_check(camera["ip"])
 
-        result = subprocess.run(
-            ["ping", "-c", "1", "-W", "1", camera["ip"]],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
+        print("----------------------------------------")
 
-        if result.returncode == 0:
+        if ping_ok:
+            print(f"Ping   : OK ({ping_time} ms)")
+        else:
+            print("Ping   : FAILED")
 
-            new_status = "ONLINE"
+        if http_ok:
+            print(f"HTTP   : OK ({http_time} ms)")
+        else:
+            print("HTTP   : FAILED")
+
+        if ping_ok and http_ok:
+
+            status = "ONLINE"
+
             online_count += 1
+
+            update_camera_status(
+                camera["id"],
+                status
+            )
+
+            info(f"{camera['name']} ONLINE")
 
         else:
 
-            new_status = "OFFLINE"
+            status = "OFFLINE"
+
             offline_count += 1
 
-        if old_status != new_status:
+            update_camera_status(
+                camera["id"],
+                status
+            )
 
-            update_camera_status(camera["id"], new_status)
+            warning(f"{camera['name']} OFFLINE")
 
-            if new_status == "ONLINE":
+        print(f"Status : {status}")
 
-                info(f"{camera['name']} ONLINE")
-
-            else:
-
-                warning(f"{camera['name']} OFFLINE")
-
-        print(f"Durum : {new_status}\n")
-
-    print("========== Monitoring Ozeti ==========")
-    print(f"Kontrol Zamani : {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}")
-    print(f"Toplam Kamera  : {len(cameras)}")
-    print(f"Online         : {online_count}")
-    print(f"Offline        : {offline_count}")
-    print("======================================")
+    print("\n========================================")
+    print("Monitoring Tamamlandi")
+    print("----------------------------------------")
+    print(f"Online  : {online_count}")
+    print(f"Offline : {offline_count}")
+    print("========================================")

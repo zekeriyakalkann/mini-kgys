@@ -1,0 +1,118 @@
+#include "camera_manager.h"
+
+#include "board_config.h"
+
+#include <Arduino.h>
+
+bool cameraReady = false;
+
+void initCamera()
+{
+    camera_config_t config;
+
+    config.ledc_channel = LEDC_CHANNEL_0;
+    config.ledc_timer = LEDC_TIMER_0;
+
+    config.pin_d0 = Y2_GPIO_NUM;
+    config.pin_d1 = Y3_GPIO_NUM;
+    config.pin_d2 = Y4_GPIO_NUM;
+    config.pin_d3 = Y5_GPIO_NUM;
+    config.pin_d4 = Y6_GPIO_NUM;
+    config.pin_d5 = Y7_GPIO_NUM;
+    config.pin_d6 = Y8_GPIO_NUM;
+    config.pin_d7 = Y9_GPIO_NUM;
+
+    config.pin_xclk = XCLK_GPIO_NUM;
+    config.pin_pclk = PCLK_GPIO_NUM;
+    config.pin_vsync = VSYNC_GPIO_NUM;
+    config.pin_href = HREF_GPIO_NUM;
+
+    config.pin_sccb_sda = SIOD_GPIO_NUM;
+    config.pin_sccb_scl = SIOC_GPIO_NUM;
+
+    config.pin_pwdn = PWDN_GPIO_NUM;
+    config.pin_reset = RESET_GPIO_NUM;
+
+    config.xclk_freq_hz = 20000000;
+
+    config.pixel_format = PIXFORMAT_JPEG;
+
+    if (psramFound())
+    {
+        config.frame_size = FRAMESIZE_VGA;
+        config.jpeg_quality = 12;
+        config.fb_count = 2;
+    }
+    else
+    {
+        config.frame_size = FRAMESIZE_QVGA;
+        config.jpeg_quality = 15;
+        config.fb_count = 1;
+    }
+
+    esp_err_t err = esp_camera_init(&config);
+
+    if (err != ESP_OK)
+    {
+        cameraReady = false;
+
+        Serial.print("Camera Init Failed : ");
+        Serial.println(err);
+        return;
+    }
+    
+    cameraReady = true;
+    Serial.println("Camera Initialized");
+}
+
+camera_fb_t* captureFrame()
+{
+    return esp_camera_fb_get();
+}
+
+void releaseFrame(camera_fb_t *fb)
+{
+    if (fb != nullptr)
+    {
+        esp_camera_fb_return(fb);
+    }
+}
+
+bool isCameraReady()
+{
+    return cameraReady;
+}
+
+void testCapture()
+{
+    if (!cameraReady)
+    {
+        Serial.println("Camera Not Ready");
+        return;
+    }
+
+    camera_fb_t *fb = captureFrame();
+
+    if (fb == nullptr)
+    {
+        Serial.println("Capture Failed");
+        return;
+    }
+
+    Serial.println();
+    Serial.println("========== FRAME INFO ==========");
+
+    Serial.print("Width  : ");
+    Serial.println(fb->width);
+
+    Serial.print("Height : ");
+    Serial.println(fb->height);
+
+    Serial.print("Length : ");
+    Serial.print(fb->len);
+    Serial.println(" bytes");
+
+    Serial.println("===============================");
+
+    releaseFrame(fb);
+}

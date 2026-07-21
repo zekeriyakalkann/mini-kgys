@@ -11,30 +11,69 @@ from camera import (
 )
 
 
-def main():
-    
+def print_banner():
+
+    print("\n========================================")
+    print("          MINI-KGYS v1.0")
+    print("========================================")
+
+
+def initialize_system():
+
+    print("\nInitializing System...")
+
     create_database()
+
+    print("Database      : OK")
+    print("System        : READY")
+
+
+def show_system_info():
+
+    print("\n=========== SYSTEM INFO ===========")
+
+    print(f"Camera Count : {get_camera_count()}")
+
+    print("===================================")
+
+
+def start_monitoring():
+
+    print("\nStarting Monitoring...\n")
+
+    check_cameras()
+
+    print("\nMonitoring Completed.")
+
+
+def main():
+
+    print_banner()
+
+    initialize_system()
+
+    show_system_info()
 
     while True:
 
         choice = show_menu()
 
         if choice == "1":
+
             info("Kamera listesi goruntulendi")
+
             list_cameras()
 
-
         elif choice == "2":
-            print("\n=== SISTEM BILGISI ===")
-            print(f"Toplam Kamera Sayisi: {get_camera_count()}")
+
+            show_system_info()
 
         elif choice == "3":
 
-            check_cameras()
-            print("\nKamera durumlari guncellendi.")
+            start_monitoring()
 
         elif choice == "4":
-            
+
             create_camera()
 
         elif choice == "5":
@@ -44,14 +83,18 @@ def main():
         elif choice == "6":
 
             update_camera_menu()
-            
+
         elif choice == "0":
-            print("\nMini KGYS kapatiliyor...")
+
+            print("\nMini-KGYS kapatiliyor...")
+
             break
 
         else:
+
             print("\nGecersiz secim!")
 
 
 if __name__ == "__main__":
+
     main()

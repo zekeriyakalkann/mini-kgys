@@ -1,21 +1,51 @@
 import sqlite3
 from pathlib import Path
+from datetime import datetime
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATABASE_FILE = BASE_DIR / "data" / "database.db"
 
-def create_database():
+
+# -------------------------------------------------
+# Connection
+# -------------------------------------------------
+
+def get_connection():
 
     connection = sqlite3.connect(DATABASE_FILE)
+    connection.row_factory = sqlite3.Row
 
+    return connection
+
+
+# -------------------------------------------------
+# Database
+# -------------------------------------------------
+
+def create_database():
+
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS cameras (
-            id INTEGER PRIMARY KEY,
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
             name TEXT NOT NULL,
-            ip TEXT NOT NULL,
-            status TEXT NOT NULL
+
+            ip TEXT NOT NULL UNIQUE,
+
+            status TEXT NOT NULL,
+
+            last_ping REAL,
+
+            last_http REAL,
+
+            last_image TEXT,
+
+            last_check TEXT
+
         )
     """)
 
@@ -23,14 +53,22 @@ def create_database():
     connection.close()
 
 
-def add_camera(name, ip, status):
+# -------------------------------------------------
+# Create
+# -------------------------------------------------
 
-    connection = sqlite3.connect(DATABASE_FILE)
+def add_camera(name, ip, status="UNKNOWN"):
 
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute("""
-        INSERT INTO cameras (name, ip, status)
+        INSERT INTO cameras
+        (
+            name,
+            ip,
+            status
+        )
         VALUES (?, ?, ?)
     """, (name, ip, status))
 
@@ -38,31 +76,91 @@ def add_camera(name, ip, status):
     connection.close()
 
 
+# -------------------------------------------------
+# Read
+# -------------------------------------------------
+
 def get_all_cameras():
 
-    connection = sqlite3.connect(DATABASE_FILE)
-
-    connection.row_factory = sqlite3.Row
-
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute("""
-        SELECT * FROM cameras
+        SELECT *
+        FROM cameras
+        ORDER BY id
     """)
 
-    rows = cursor.fetchall()
-
-    cameras = [dict(row) for row in rows]
+    cameras = [dict(row) for row in cursor.fetchall()]
 
     connection.close()
 
     return cameras
 
 
+def get_camera_by_id(camera_id):
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT *
+        FROM cameras
+        WHERE id = ?
+    """, (camera_id,))
+
+    camera = cursor.fetchone()
+
+    connection.close()
+
+    if camera:
+        return dict(camera)
+
+    return None
+
+
+def camera_exists(ip):
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT id
+        FROM cameras
+        WHERE ip = ?
+    """, (ip,))
+
+    exists = cursor.fetchone() is not None
+
+    connection.close()
+
+    return exists
+
+
+# -------------------------------------------------
+# Update
+# -------------------------------------------------
+
+def update_camera(camera_id, name, ip):
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        UPDATE cameras
+        SET
+            name = ?,
+            ip = ?
+        WHERE id = ?
+    """, (name, ip, camera_id))
+
+    connection.commit()
+    connection.close()
+
+
 def update_camera_status(camera_id, status):
 
-    connection = sqlite3.connect(DATABASE_FILE)
-
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute("""
@@ -72,32 +170,62 @@ def update_camera_status(camera_id, status):
     """, (status, camera_id))
 
     connection.commit()
-
     connection.close()
 
-def camera_exists(ip):
 
-    connection = sqlite3.connect(DATABASE_FILE)
+def update_camera_monitoring(
+    camera_id,
+    status,
+    ping_time,
+    http_time,
+    image_path
+):
 
-    connection.row_factory = sqlite3.Row
-
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute("""
-        SELECT * FROM cameras
-        WHERE ip = ?
-    """, (ip,))
+        UPDATE cameras
+        SET
 
-    camera = cursor.fetchone()
+            status = ?,
 
+            last_ping = ?,
+
+            last_http = ?,
+
+            last_image = ?,
+
+            last_check = ?
+
+        WHERE id = ?
+    """, (
+
+        status,
+
+        ping_time,
+
+        http_time,
+
+        image_path,
+
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+
+        camera_id
+
+    ))
+
+    connection.commit()
     connection.close()
 
-    return camera is not None
+
+# -------------------------------------------------
+# Delete
+# -------------------------------------------------
 
 def delete_camera(camera_id):
 
-    connection = sqlite3.connect(DATABASE_FILE)
-
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute("""
@@ -106,45 +234,175 @@ def delete_camera(camera_id):
     """, (camera_id,))
 
     connection.commit()
-
     connection.close()
 
-def get_camera_by_id(camera_id):
 
-    connection = sqlite3.connect(DATABASE_FILE)
+# -------------------------------------------------
+# Dashboard
+# -------------------------------------------------
 
-    connection.row_factory = sqlite3.Row
+def get_camera_count():
 
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute("""
-        SELECT * FROM cameras
+        SELECT COUNT(*)
+        FROM cameras
+    """)
+
+    count = cursor.fetchone()[0]
+
+    connection.close()
+
+    return count
+
+
+def get_online_camera_count():
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM cameras
+        WHERE status = 'ONLINE'
+    """)
+
+    count = cursor.fetchone()[0]
+
+    connection.close()
+
+    return count
+
+
+def get_offline_camera_count():
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM cameras
+        WHERE status = 'OFFLINE'
+    """)
+
+    count = cursor.fetchone()[0]
+
+    connection.close()
+
+    return count
+
+
+def get_last_monitoring_time():
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT MAX(last_check)
+        FROM cameras
+    """)
+
+    result = cursor.fetchone()[0]
+
+    connection.close()
+
+    return result
+
+
+def get_online_cameras():
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT *
+        FROM cameras
+        WHERE status = 'ONLINE'
+        ORDER BY name
+    """)
+
+    cameras = [dict(row) for row in cursor.fetchall()]
+
+    connection.close()
+
+    return cameras
+
+
+def get_offline_cameras():
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT *
+        FROM cameras
+        WHERE status = 'OFFLINE'
+        ORDER BY name
+    """)
+
+    cameras = [dict(row) for row in cursor.fetchall()]
+
+    connection.close()
+
+    return cameras
+
+
+def get_dashboard_cameras():
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT *
+        FROM cameras
+        ORDER BY name
+    """)
+
+    cameras = [dict(row) for row in cursor.fetchall()]
+
+    connection.close()
+
+    return cameras
+
+
+def get_last_image_name(camera_id):
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT last_image
+        FROM cameras
         WHERE id = ?
     """, (camera_id,))
 
-    camera = cursor.fetchone()
+    result = cursor.fetchone()
 
     connection.close()
 
-    if camera:
+    if result is None:
+        return "-"
 
-        return dict(camera)
+    image_path = result["last_image"]
 
-    return None
+    if image_path is None:
+        return "-"
+
+    return Path(image_path).name
 
 
-def update_camera(camera_id, name, ip):
+def get_dashboard_data():
 
-    connection = sqlite3.connect(DATABASE_FILE)
+    return {
 
-    cursor = connection.cursor()
+        "camera_count": get_camera_count(),
 
-    cursor.execute("""
-        UPDATE cameras
-        SET name = ?, ip = ?
-        WHERE id = ?
-    """, (name, ip, camera_id))
+        "online_count": get_online_camera_count(),
 
-    connection.commit()
+        "offline_count": get_offline_camera_count(),
 
-    connection.close()
+        "last_check": get_last_monitoring_time()
+
+    }

@@ -2,10 +2,13 @@ import subprocess
 import requests
 import time
 
-from datetime import datetime
-
-from database import get_all_cameras, update_camera_status
+from database import (
+    get_all_cameras,
+    update_camera_monitoring
+)
 from logger import info, warning
+from capture import capture_image
+
 
 def ping_camera(ip):
 
@@ -26,6 +29,7 @@ def ping_camera(ip):
 
     return False, None
 
+
 def http_check(ip):
 
     try:
@@ -33,7 +37,7 @@ def http_check(ip):
         start = time.perf_counter()
 
         response = requests.get(
-            f"http://{ip}",
+            f"http://{ip}:8080/health",
             timeout=2
         )
 
@@ -46,9 +50,45 @@ def http_check(ip):
 
         return False, None
 
-    except:
+    except Exception:
 
         return False, None
+
+
+def monitor_camera(camera):
+
+    result = {
+        "id": camera["id"],
+        "name": camera["name"],
+        "ip": camera["ip"],
+        "status": "OFFLINE",
+        "ping": None,
+        "http": None,
+        "image": None
+    }
+
+    ping_ok, ping_time = ping_camera(camera["ip"])
+    result["ping"] = ping_time
+
+    if not ping_ok:
+        return result
+
+    http_ok, http_time = http_check(camera["ip"])
+    result["http"] = http_time
+
+    if not http_ok:
+        return result
+
+    image_path = capture_image(
+        camera["name"],
+        camera["ip"]
+    )
+
+    result["image"] = image_path
+    result["status"] = "ONLINE"
+
+    return result
+
 
 def check_cameras():
 
@@ -63,51 +103,50 @@ def check_cameras():
 
     for camera in cameras:
 
-        print(f"\nKamera : {camera['name']}")
-        print(f"IP     : {camera['ip']}")
+        result = monitor_camera(camera)
 
-        ping_ok, ping_time = ping_camera(camera["ip"])
-        http_ok, http_time = http_check(camera["ip"])
-
+        print(f"\nKamera : {result['name']}")
+        print(f"IP     : {result['ip']}")
         print("----------------------------------------")
 
-        if ping_ok:
-            print(f"Ping   : OK ({ping_time} ms)")
+        if result["ping"] is not None:
+            print(f"Ping   : OK ({result['ping']} ms)")
         else:
             print("Ping   : FAILED")
 
-        if http_ok:
-            print(f"HTTP   : OK ({http_time} ms)")
+        if result["http"] is not None:
+            print(f"HTTP   : OK ({result['http']} ms)")
         else:
             print("HTTP   : FAILED")
 
-        if ping_ok and http_ok:
+        print(f"Status : {result['status']}")
 
-            status = "ONLINE"
+        if result["image"] is not None:
+            print(f"Image  : {result['image']}")
+
+        update_camera_monitoring(
+            result["id"],
+            result["status"],
+            result["ping"],
+            result["http"],
+            result["image"]
+        )
+
+        if result["status"] == "ONLINE":
 
             online_count += 1
 
-            update_camera_status(
-                camera["id"],
-                status
+            info(
+                f"{result['name']} ONLINE"
             )
-
-            info(f"{camera['name']} ONLINE")
 
         else:
 
-            status = "OFFLINE"
-
             offline_count += 1
 
-            update_camera_status(
-                camera["id"],
-                status
+            warning(
+                f"{result['name']} OFFLINE"
             )
-
-            warning(f"{camera['name']} OFFLINE")
-
-        print(f"Status : {status}")
 
     print("\n========================================")
     print("Monitoring Tamamlandi")

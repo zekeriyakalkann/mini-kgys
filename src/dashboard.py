@@ -3,6 +3,7 @@ from pathlib import Path
 
 from database import get_all_cameras
 from monitoring import check_cameras
+from events import get_last_events
 
 
 def print_header():
@@ -56,27 +57,18 @@ def print_camera(camera):
     print(f"Status         : {camera['status']}")
 
     if camera.get("last_ping") is not None:
-
         print(f"Last Ping      : {camera['last_ping']} ms")
-
     else:
-
         print("Last Ping      : N/A")
 
     if camera.get("last_http") is not None:
-
         print(f"Last HTTP      : {camera['last_http']} ms")
-
     else:
-
         print("Last HTTP      : N/A")
 
     if camera.get("last_check"):
-
         print(f"Last Check     : {camera['last_check']}")
-
     else:
-
         print("Last Check     : N/A")
 
     if camera.get("last_image"):
@@ -105,6 +97,34 @@ def print_camera_list(cameras):
     for camera in cameras:
 
         print_camera(camera)
+
+
+def print_event_history():
+
+    events = get_last_events(limit=5)
+
+    print()
+    print("=" * 60)
+    print("LAST EVENTS")
+    print("=" * 60)
+
+    if not events:
+
+        print("No events found.")
+        print()
+
+        return
+
+    for event in events:
+
+        print("-" * 60)
+
+        print(f"Time        : {event['event_time']}")
+        print(f"Type        : {event['event_type']}")
+        print(f"Description : {event['description']}")
+
+    print("-" * 60)
+    print()
 
 
 def print_footer():
@@ -144,5 +164,7 @@ def show_dashboard():
     )
 
     print_camera_list(cameras)
+
+    print_event_history()
 
     print_footer()

@@ -2,13 +2,19 @@ import subprocess
 import requests
 import time
 
+from events import add_event
 from database import (
     get_all_cameras,
+    get_camera_status,
     update_camera_monitoring
 )
 from logger import info, warning
 from capture import capture_image
 
+
+# -------------------------------------------------
+# Ping Test
+# -------------------------------------------------
 
 def ping_camera(ip):
 
@@ -29,6 +35,10 @@ def ping_camera(ip):
 
     return False, None
 
+
+# -------------------------------------------------
+# HTTP Health Check
+# -------------------------------------------------
 
 def http_check(ip):
 
@@ -54,6 +64,10 @@ def http_check(ip):
 
         return False, None
 
+
+# -------------------------------------------------
+# Monitor Single Camera
+# -------------------------------------------------
 
 def monitor_camera(camera):
 
@@ -90,6 +104,10 @@ def monitor_camera(camera):
     return result
 
 
+# -------------------------------------------------
+# Monitoring
+# -------------------------------------------------
+
 def check_cameras():
 
     print("\n========================================")
@@ -124,6 +142,16 @@ def check_cameras():
         if result["image"] is not None:
             print(f"Image  : {result['image']}")
 
+        # ----------------------------------------
+        # State Change Detection
+        # ----------------------------------------
+
+        old_status = get_camera_status(result["id"])
+
+        # ----------------------------------------
+        # Database Update
+        # ----------------------------------------
+
         update_camera_monitoring(
             result["id"],
             result["status"],
@@ -131,6 +159,44 @@ def check_cameras():
             result["http"],
             result["image"]
         )
+
+        # ----------------------------------------
+        # ONLINE / OFFLINE Events
+        # ----------------------------------------
+
+        if old_status != result["status"]:
+
+            if result["status"] == "ONLINE":
+
+                add_event(
+                    result["id"],
+                    "ONLINE",
+                    f"{result['name']} is online."
+                )
+
+            else:
+
+                add_event(
+                    result["id"],
+                    "OFFLINE",
+                    f"{result['name']} is offline."
+                )
+
+        # ----------------------------------------
+        # Capture Event
+        # ----------------------------------------
+
+        if result["image"] is not None:
+
+            add_event(
+                result["id"],
+                "CAPTURE",
+                "Image captured successfully."
+            )
+
+        # ----------------------------------------
+        # Log & Statistics
+        # ----------------------------------------
 
         if result["status"] == "ONLINE":
 

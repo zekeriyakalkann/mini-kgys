@@ -13,7 +13,10 @@ DATABASE_FILE = BASE_DIR / "data" / "database.db"
 def get_connection():
 
     connection = sqlite3.connect(DATABASE_FILE)
+
     connection.row_factory = sqlite3.Row
+
+    connection.execute("PRAGMA foreign_keys = ON")
 
     return connection
 
@@ -45,6 +48,25 @@ def create_database():
             last_image TEXT,
 
             last_check TEXT
+
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS events (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            camera_id INTEGER NOT NULL,
+
+            event_type TEXT NOT NULL,
+
+            description TEXT NOT NULL,
+
+            event_time TEXT NOT NULL,
+
+            FOREIGN KEY (camera_id)
+            REFERENCES cameras(id)
 
         )
     """)
@@ -115,6 +137,27 @@ def get_camera_by_id(camera_id):
 
     if camera:
         return dict(camera)
+
+    return None
+
+
+def get_camera_status(camera_id):
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT status
+        FROM cameras
+        WHERE id = ?
+    """, (camera_id,))
+
+    result = cursor.fetchone()
+
+    connection.close()
+
+    if result:
+        return result["status"]
 
     return None
 

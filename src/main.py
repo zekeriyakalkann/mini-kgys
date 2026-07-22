@@ -1,6 +1,7 @@
 from database import create_database
 from monitoring import check_cameras
 from logger import info
+from dashboard import show_dashboard
 from menu import show_menu
 from camera import (
     list_cameras,
@@ -52,35 +53,37 @@ def main():
 
     initialize_system()
 
-    show_system_info()
-
     while True:
 
         choice = show_menu()
 
         if choice == "1":
 
+            show_dashboard()
+
+        elif choice == "2":
+
             info("Kamera listesi goruntulendi")
 
             list_cameras()
 
-        elif choice == "2":
+        elif choice == "3":
 
             show_system_info()
 
-        elif choice == "3":
+        elif choice == "4":
 
             start_monitoring()
 
-        elif choice == "4":
+        elif choice == "5":
 
             create_camera()
 
-        elif choice == "5":
+        elif choice == "6":
 
             delete_camera_menu()
 
-        elif choice == "6":
+        elif choice == "7":
 
             update_camera_menu()
 

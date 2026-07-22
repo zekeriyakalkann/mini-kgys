@@ -1,13 +1,14 @@
 import subprocess
 import requests
 import time
+import alarms
 
-from events import add_event
 from database import (
     get_all_cameras,
     get_camera_status,
     update_camera_monitoring
 )
+from events import add_event
 from logger import info, warning
 from capture import capture_image
 
@@ -175,6 +176,15 @@ def check_cameras():
                 )
 
             else:
+
+                if not alarms.active_alarm_exists(result["id"], "OFFLINE"):
+
+                    alarms.create_alarm(
+                        camera_id=result["id"],
+                        alarm_type="OFFLINE",
+                        severity="HIGH",
+                        description=f"{result['name']} is offline."
+                    )
 
                 add_event(
                     result["id"],

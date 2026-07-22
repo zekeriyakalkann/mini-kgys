@@ -71,6 +71,31 @@ def create_database():
         )
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS alarms (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            camera_id INTEGER NOT NULL,
+
+            alarm_type TEXT NOT NULL,
+
+            severity TEXT NOT NULL,
+
+            description TEXT NOT NULL,
+
+            status TEXT NOT NULL,
+
+            created_at TEXT NOT NULL,
+
+            resolved_at TEXT,
+
+            FOREIGN KEY (camera_id)
+            REFERENCES cameras(id)
+
+        )
+    """)
+
     connection.commit()
     connection.close()
 
@@ -449,3 +474,21 @@ def get_dashboard_data():
         "last_check": get_last_monitoring_time()
 
     }
+
+def get_active_alarms():
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT *
+        FROM alarms
+        WHERE status = 'ACTIVE'
+        ORDER BY created_at DESC
+    """)
+
+    alarms = [dict(row) for row in cursor.fetchall()]
+
+    connection.close()
+
+    return alarms

@@ -1,7 +1,10 @@
 from datetime import datetime
 from pathlib import Path
 
-from database import get_all_cameras
+from database import (
+    get_all_cameras,
+    get_active_alarms
+)
 from monitoring import check_cameras
 from events import get_last_events
 
@@ -127,6 +130,36 @@ def print_event_history():
     print()
 
 
+def print_active_alarms():
+
+    alarms = get_active_alarms()
+
+    print()
+    print("=" * 60)
+    print("ACTIVE ALARMS")
+    print("=" * 60)
+
+    if not alarms:
+
+        print("No active alarms.")
+        print()
+
+        return
+
+    for alarm in alarms:
+
+        print("-" * 60)
+
+        print(f"Camera ID   : {alarm['camera_id']}")
+        print(f"Type        : {alarm['alarm_type']}")
+        print(f"Severity    : {alarm['severity']}")
+        print(f"Status      : {alarm['status']}")
+        print(f"Created At  : {alarm['created_at']}")
+        print(f"Description : {alarm['description']}")
+
+    print("-" * 60)
+    print()
+
 def print_footer():
 
     print()
@@ -166,5 +199,7 @@ def show_dashboard():
     print_camera_list(cameras)
 
     print_event_history()
+
+    print_active_alarms()
 
     print_footer()
